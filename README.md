@@ -18,13 +18,19 @@ tflearn
 To train the classifier:
 
 ```
-python main.py train
+python model.py train
 ```
 
 To test the classifier (requires some trivial tweaking in the code):
 
 ```
-python main.py test
+python model.py test
+```
+
+To use the classifier to predict current motion:
+
+```
+python main.py
 ```
 
 - Most editable parameters are in the config.py file, the model can be changed in the model.py file.
