@@ -1,11 +1,11 @@
-rawPath = "Data/Raw/"
-processedPath = "Data/Processed/"
-datasetPath = "Dataset/"
-modelsPath = "Models/"
+raw_path = "Data/Raw/"
+processed_path = "Data/Processed/"
+dataset_path = "Dataset/"
+models_path = "Models/"
 
-datasetImageSize = 24
-datasetMaxSerieLength = 100
+dataset_img_size = 24
+dataset_max_serie_length = 100
 
-cascadePath = "/usr/local/Cellar/opencv/2.4.13.2/share/OpenCV/haarcascades/"
+cv2_cascade_path = "/usr/local/Cellar/opencv/2.4.13.2/share/OpenCV/haarcascades/"
 
-framesInHistory = 8**2 #Must be a square for display
+frames_in_history = 8 ** 2 #Must be a square for display

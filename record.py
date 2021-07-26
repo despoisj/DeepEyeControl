@@ -3,35 +3,31 @@ import time
 
 import cv2
 import numpy as np
-
 import imutils
 from imutils.video import WebcamVideoStream
 
-from config import rawPath
-from datasetTools import save, process
-from videoTools import getEyes
-from videoTools import getFace
-from videoTools import showDifference
-
+from config import raw_path
+from dataset_tools import save, process
+from video_tools import get_eyes, get_face, show_difference
 from detector import Detector
 
 
-#Used to show/save NON-PROCESSED images in "raw"
-def stream(record, showFrame, showFace, showEyes, showDiff):
-	
-	#Setup motion recording
-	motionIndex = 0
-	folders = os.listdir(rawPath)
-	for folder in folders:
-		if folder.startswith(motionName):
-			number = int(folder.split("_")[-1])
-			motionIndex = max(motionIndex,number + 1)
+def stream(record, show_frame, show_face, show_eyes, show_diff):
+	"""Used to show/save NON-PROCESSED images in 'raw'"""
 
-	print "Recording {}_{}".format(motionName,motionIndex)
-	savePath = rawPath+"{}_{}/".format(motionName,motionIndex)
+	#Setup motion recording
+	motion_index = 0
+	folders = os.listdir(raw_path)
+	for folder in folders:
+		if folder.startswith(motion_name):
+			number = int(folder.split("_")[-1])
+			motion_index = max(motion_index, number + 1)
+
+	print("Recording {}_{}".format(motion_name, motion_index))
+	save_path = raw_path+"{}_{}/".format(motion_name, motion_index)
 	
 	if record:
-		os.mkdir(savePath)
+		os.mkdir(save_path)
 
 	detector = Detector()
 
@@ -41,12 +37,12 @@ def stream(record, showFrame, showFace, showEyes, showDiff):
 	dt = 0
 	step = 0
 
-	lastEye0 = None
-	lastFace = None
+	lasteye_0 = None
+	last_face = None
 
-	fullFrameSize = (1280,720)
+	full_frameSize = (1280,720)
 
-	with open(savePath+'/a_skips.txt','w+') as f:
+	with open(save_path + '/a_skips.txt','w+') as f:
 
 		while True:	
 			
@@ -55,74 +51,74 @@ def stream(record, showFrame, showFace, showEyes, showDiff):
 			waitMs = 5
 			key = cv2.waitKey(waitMs) & 0xFF	
 
-			fullFrame = vs.read()
-			fullFrame = cv2.cvtColor(fullFrame, cv2.COLOR_BGR2GRAY)
-			frame = imutils.resize(fullFrame, width=300)
+			full_frame = vs.read()
+			full_frame = cv2.cvtColor(full_frame, cv2.COLOR_BGR2GRAY)
+			frame = imutils.resize(full_frame, width=300)
 
 			#Show frame
-			if showFrame:
+			if show_frame:
 				cv2.imshow("Frame", imutils.resize(frame, width=300))
 
-			faceBB = detector.getFace(frame)
+			face_bb = detector.get_face(frame)
 
 			#Skip if no face
-			if faceBB is None:
+			if face_bb is None:
 				#Avoid flash in difference
-				lastFace = None
+				last_face = None
 				#Invalidate eyes bounding box as all will change
-				detector.resetEyesBB();
+				detector.reset_eyes_bb();
 				#Write skips for difference frames
 				f.write("face_{}\n".format(step))
 				continue
 
 			#Get small face coordinates
-			x,y,w,h = faceBB
+			x,y,w,h = face_bb
 			face = frame[y:y+h, x:x+w]
 
 			#Apply to fullscale
-			xScale = fullFrame.shape[1]/frame.shape[1]
-			yScale = fullFrame.shape[0]/frame.shape[0]
-			x,y,w,h = x*xScale,y*yScale,w*xScale,h*yScale
-			fullFace = fullFrame[y:y+h, x:x+w]
+			xScale = full_frame.shape[1] / frame.shape[1]
+			yScale = full_frame.shape[0] / frame.shape[0]
+			x,y,w,h = x * xScale, y * yScale, w * xScale, h * yScale
+			fullFace = full_frame[y:y+h, x:x+w]
 
 			#Show face
-			if showFace:
-				if lastFace is not None and showDiff:
-					showDifference(fullFace,lastFace)
+			if show_face:
+				if last_face is not None and show_diff:
+					show_difference(fullFace,last_face)
 				else:
 					resizedFullFace = cv2.resize(fullFace,(200,200))
 					resizedFace = cv2.resize(face,(200,200))
 					cv2.imshow("Face",np.hstack((resizedFullFace,resizedFace)))
 
 			#Remember last face
-			lastFace = fullFace
+			last_face = fullFace
 
 			#Get eyes
-			eyes = detector.getEyes(fullFace)
+			eyes = detector.get_eyes(fullFace)
 
 			#Skip if not 2 eyes
 			if eyes is None:
-				lastEye0 = None
+				lasteye_0 = None
 				#Write skips for difference frames
 				f.write("eye_{}\n".format(step))
 				continue
 
-			eye0, eye1 = eyes
+			eye_0, eye_1 = eyes
 			
-			if showEyes:
-				if showDiff and lastEye0 is not None:
-					showDifference(eye0,lastEye0)
+			if show_eyes:
+				if show_diff and lasteye_0 is not None:
+					show_difference(eye_0,lasteye_0)
 				else:	
-					processed0 = cv2.resize(process(eye0),(100,100))
-					processed1 = cv2.resize(process(eye1),(100,100))
+					processed0 = cv2.resize(process(eye_0),(100,100))
+					processed1 = cv2.resize(process(eye_1),(100,100))
 					processed = np.hstack((processed0,processed1))
 					cv2.imshow("Eyes",processed)
 
-				lastEye0 = eye0
+				lasteye_0 = eye_0
 
 			if record:
-				save(eye0,step,0,motionName,savePath)
-				save(eye1,step,1,motionName,savePath)
+				save(eye_0,step,0,motion_name,save_path)
+				save(eye_1,step,1,motion_name,save_path)
 				step += 1
 
 			dt += time.time() - t0
@@ -131,8 +127,8 @@ def stream(record, showFrame, showFace, showEyes, showDiff):
 
 if __name__ == "__main__":
 
-	motionName = "z"
-	stream(record=True, showFrame=False, showFace=False, showEyes=False, showDiff=False)
+	motion_name = "z"
+	stream(record=True, show_frame=False, show_face=False, show_eyes=False, show_diff=False)
 
 
 

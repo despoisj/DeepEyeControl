@@ -1,27 +1,23 @@
 import cv2
 import numpy as np
 import tflearn
-from model import createModel
-from config import datasetImageSize
-from config import framesInHistory
-from datasetTools import padLSTM
-from datasetTools import process
-from imutils.video import WebcamVideoStream
 import cv2
 import imutils
 import time
+from imutils.video import WebcamVideoStream
+
+from model import create_model
+from config import dataset_img_size
+from config import frames_in_history
+from dataset_tools import pad_lstm, process
+from video_tools import display_current_diff, display_history_diffs, get_blank_frame_diff, get_difference_frame, show_difference
 from detector import Detector
-from videoTools import displayCurrentDiff
-from videoTools import displayHistoryDiffs
-from videoTools import getBlankFrameDiff
-from videoTools import getDifferenceFrame
-from videoTools import showDifference
 from classifier import Classifier
 
-def main(displayHistory=True):
+def main(display_history=True):
 	#Window for past frames
-	framesDiffHistory = [(getBlankFrameDiff(),getBlankFrameDiff()) for i in range(framesInHistory)]
-	lastEyes = None
+	frames_diff_history = [(get_blank_frame_diff(),get_blank_frame_diff()) for i in range(frames_in_history)]
+	last_eyes = None
 
 	#Load model classifier
 	classifier = Classifier()
@@ -50,76 +46,76 @@ def main(displayHistory=True):
 		key = cv2.waitKey(waitMs) & 0xFF
 
 		#Get image from webcam, convert to grayscale and resize
-		fullFrame = vs.read()
-		fullFrame = cv2.cvtColor(fullFrame, cv2.COLOR_BGR2GRAY)
-		frame = imutils.resize(fullFrame, width=300)
+		full_frame = vs.read()
+		full_frame = cv2.cvtColor(full_frame, cv2.COLOR_BGR2GRAY)
+		frame = imutils.resize(full_frame, width=300)
 
 		#Find face
-		faceBB = detector.getFace(frame)
-		if faceBB is None:
+		face_bb = detector.get_face(frame)
+		if face_bb is None:
 			#Invalidate eyes bounding box as all will change
-			lastEyes = None
-			detector.resetEyesBB()
+			last_eyes = None
+			detector.reset_eyes_bb()
 			continue
 
 		#Get low resolution face coordinates
-		x,y,w,h = faceBB
+		x,y,w,h = face_bb
 		face = frame[y:y+h, x:x+w]
 
 		#Apply to high resolution frame
-		xScale = fullFrame.shape[1]/frame.shape[1]
-		yScale = fullFrame.shape[0]/frame.shape[0]
+		xScale = full_frame.shape[1]/frame.shape[1]
+		yScale = full_frame.shape[0]/frame.shape[0]
 		x,y,w,h = x*xScale,y*yScale,w*xScale,h*yScale
-		fullFace = fullFrame[y:y+h, x:x+w]
+		fullFace = full_frame[y:y+h, x:x+w]
 
 		#Find eyes on high resolution face
-		eyes = detector.getEyes(fullFace)
+		eyes = detector.get_eyes(fullFace)
 		if eyes is None:
 			#Reset last eyes
-			lastEyes = None
+			last_eyes = None
 			continue
 
-		eye0, eye1 = eyes
+		eye_0, eye_1 = eyes
 
 		#Process (normalize, resize)			
-		eye0 = process(eye0)
-		eye1 = process(eye1)
+		eye_0 = process(eye_0)
+		eye_1 = process(eye_1)
 		
 		#Reshape for dataset
-		eye0 = np.reshape(eye0,[datasetImageSize,datasetImageSize,1])
-		eye1 = np.reshape(eye1,[datasetImageSize,datasetImageSize,1])
+		eye_0 = np.reshape(eye_0,[dataset_img_size,dataset_img_size,1])
+		eye_1 = np.reshape(eye_1,[dataset_img_size,dataset_img_size,1])
 
 		#We have a recent picture of the eyes
-		if lastEyes is not None:
+		if last_eyes is not None:
 			#Load previous eyes
-			eye0previous, eye1previous = lastEyes
+			eye_0_previous, eye_1_previous = last_eyes
 
 			#Compute diffs
-			diff0 = getDifferenceFrame(eye0, eye0previous)
-			diff1 = getDifferenceFrame(eye1, eye1previous)
+			diff0 = get_difference_frame(eye_0, eye_0_previous)
+			diff1 = get_difference_frame(eye_1, eye_1_previous)
 
 			#Display/debug
 			displayDiff = False
 			if displayDiff:
-				displayCurrentDiff(eye0,eye1,eye0previous,eye1previous, stopFrame=False)
+				display_current_diff(eye_0,eye_1,eye_0_previous,eye_1_previous, stop_frame=False)
 
 			#Crop beginning then add new to end
-			framesDiffHistory = framesDiffHistory[1:]
-			framesDiffHistory.append([diff0,diff1])
+			frames_diff_history = frames_diff_history[1:]
+			frames_diff_history.append([diff0,diff1])
 
 		#Keep current as last frame
-		lastEyes = [eye0, eye1]
+		last_eyes = [eye_0, eye_1]
 
 		#Note: this is not time consuming
-		if displayHistory:
-			displayHistoryDiffs(framesDiffHistory, fps)
+		if display_history:
+			display_history_diffs(frames_diff_history, fps)
 
 		#Extract each eyes
-		X0, X1 = zip(*framesDiffHistory)
+		X0, X1 = zip(*frames_diff_history)
 
 		#Reshape as a tensor (NbExamples,SerieLength,Width,Height,Channels)
-		X0 = np.reshape(X0,[-1,len(framesDiffHistory),datasetImageSize,datasetImageSize,1])
-		X1 = np.reshape(X1,[-1,len(framesDiffHistory),datasetImageSize,datasetImageSize,1])
+		X0 = np.reshape(X0,[-1,len(frames_diff_history),dataset_img_size,dataset_img_size,1])
+		X1 = np.reshape(X1,[-1,len(frames_diff_history),dataset_img_size,dataset_img_size,1])
 
 		#Save history to Classifier
 		classifier.X0 = X0
@@ -131,12 +127,4 @@ def main(displayHistory=True):
 
 
 if __name__ == "__main__":
-	main(displayHistory=True)
-
-
-
-
-
-
-
-
+	main(display_history=True)

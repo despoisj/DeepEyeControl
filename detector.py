@@ -1,25 +1,25 @@
 import cv2
-from config import cascadePath
+from config import cv2_cascade_path
 import math
 
 class Detector:
 
 	def __init__(self):
-		self.face_cascade = cv2.CascadeClassifier(cascadePath+'haarcascade_frontalface_default.xml')
-		self.eye_cascade = cv2.CascadeClassifier(cascadePath+'haarcascade_eye.xml')
-		self.faceBB = None
-		self.eyesBB = {'left':None, 'right':None}
+		self.face_cascade = cv2.CascadeClassifier(cv2_cascade_path + 'haarcascade_frontalface_default.xml')
+		self.eye_cascade = cv2.CascadeClassifier(cv2_cascade_path + 'haarcascade_eye.xml')
+		self.face_bb = None
+		self.eyes_bb = {'left':None, 'right':None}
 
-	def resetEyesBB(self):
-		self.eyesBB = {'left':None, 'right':None}
+	def reset_eyes_bb(self):
+		self.eyes_bb = {'left':None, 'right':None}
 
-	def isSameFaceBB(self,bb1,bb2):
+	def is_same_face_bb(self,bb1,bb2):
 		x1,y1,w1,h1 = bb1
 		x2,y2,w2,h2 = bb2
 		tolerance = 5
 		return math.fabs(w1-w2) < tolerance and math.fabs(h1-h2) < tolerance and math.fabs(x1-x2) < tolerance and math.fabs(y1-y2) < tolerance
 
-	def isSameEyeBB(self,bb1,bb2):
+	def is_same_eye_bb(self,bb1,bb2):
 		x1,y1,w1,h1 = bb1
 		x2,y2,w2,h2 = bb2
 		toleranceX = 10
@@ -29,7 +29,7 @@ class Detector:
 
 		return math.fabs(w1-w2) < toleranceW and math.fabs(h1-h2) < toleranceH and math.fabs(x1-x2) < toleranceX and math.fabs(y1-y2) < toleranceY
 
-	def getFace(self, frame):
+	def get_face(self, frame):
 		#Find faces
 		faces = self.face_cascade.detectMultiScale(
 			frame,
@@ -44,24 +44,24 @@ class Detector:
 		if len(faces) != 1:
 			return None
 		
-		faceBB = faces[0]
+		face_bb = faces[0]
 
 		#Save face for first frame
-		if self.faceBB is None:
-			self.faceBB = faceBB
+		if self.face_bb is None:
+			self.face_bb = face_bb
 		#Check if similar bounding box
-		elif self.isSameFaceBB(faceBB,self.faceBB):
+		elif self.is_same_face_bb(face_bb,self.face_bb):
 			#Same-ish BB, load
-			faceBB = self.faceBB
+			face_bb = self.face_bb
 		else:
 			#New BB, save and skip frame
-			self.faceBB = faceBB
+			self.face_bb = face_bb
 			return None
 
-		return faceBB
+		return face_bb
 
 	#Returns left eye then right (on picture)
-	def getEyes(self, face):
+	def get_eyes(self, face):
 		
 		#Find eyes in the face
 		eyes = self.eye_cascade.detectMultiScale(
@@ -76,48 +76,48 @@ class Detector:
 		if len(eyes) != 2:
 			return None
 
-		leftEyeX = 999
-		leftEye = None
-		rightEye = None
+		left_eyeX = 999
+		left_eye = None
+		right_eye = None
 
 		#Find left and right eyes
 		for ex,ey,ew,eh in eyes:
 			#New left eye
-			if ex < leftEyeX:
-				if leftEye is not None:
-					rightEye = leftEye
-					leftEye = (ex,ey,ew,eh)
+			if ex < left_eyeX:
+				if left_eye is not None:
+					right_eye = left_eye
+					left_eye = (ex,ey,ew,eh)
 				else:
-					leftEye = (ex,ey,ew,eh)
-					leftEyeX = ex
+					left_eye = (ex,ey,ew,eh)
+					left_eyeX = ex
 			else:
-				if leftEye is not None:
-					rightEye = (ex,ey,ew,eh)
+				if left_eye is not None:
+					right_eye = (ex,ey,ew,eh)
 
 		#Stabilization
-		eyesBB = {'left':leftEye,'right':rightEye}
+		eyes_bb = {'left':left_eye,'right':right_eye}
 
 		for side in ['left','right']:
 
 			#Save first frame BB
-			if self.eyesBB[side] is None:
-				self.eyesBB[side] = eyesBB[side]
+			if self.eyes_bb[side] is None:
+				self.eyes_bb[side] = eyes_bb[side]
 			#Load if similar BB
-			elif self.isSameEyeBB(eyesBB[side],self.eyesBB[side]):
-				eyesBB[side] = self.eyesBB[side]
+			elif self.is_same_eye_bb(eyes_bb[side],self.eyes_bb[side]):
+				eyes_bb[side] = self.eyes_bb[side]
 			#Changed the Bounding Box
 			else:
 				#New BB, save and skip frame
-				self.eyesBB[side] = eyesBB[side] 
+				self.eyes_bb[side] = eyes_bb[side] 
 				return None
 			
 		#Get BB for cropping
-		xLeft,yLeft,wLeft,hLeft = eyesBB['left']
-		xRight,yRight,wRight,hRight = eyesBB['right']
+		xLeft, yLeft, wLeft, hLeft = eyes_bb['left']
+		xRight, yRight, wRight, hRight = eyes_bb['right']
 
-		focusOnCenter = False
+		focus_on_center = False
 
-		if focusOnCenter:
+		if focus_on_center:
 			# #Focus on the center of the eye
 			wLeftNew = int(wLeft*0.75)
 			hLeftNew = int(hLeft*0.75)
@@ -134,17 +134,7 @@ class Detector:
 
 			xRight, yRight, wRight, hRight = xRightNew, yRightNew, wRightNew, hRightNew
 
-		leftEyeImage = face[yLeft:yLeft+hLeft, xLeft:xLeft+wLeft]
-		rightEyeImage = face[yRight:yRight+hRight, xRight:xRight+wRight]
+		left_eyeImage = face[yLeft:yLeft+hLeft, xLeft:xLeft+wLeft]
+		right_eyeImage = face[yRight:yRight+hRight, xRight:xRight+wRight]
 
-		return leftEyeImage, rightEyeImage
-
-
-
-
-
-
-
-
-
-
+		return left_eyeImage, right_eyeImage
